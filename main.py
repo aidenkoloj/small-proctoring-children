@@ -32,6 +32,7 @@ SECOND = datetime.timedelta(seconds=1)
 exit_flag = False
 wait_for_continue = False
 stdscr = None
+subject_name = None
 
 
 def setup_curses():
@@ -180,14 +181,56 @@ def get_trials():
     yield Trial(
         trial_name='Trial 1',
         prompt=PROMPT,
-        time_looking_at_images=2 * SECOND,
+        time_looking_at_images=20 * SECOND,
         time_after_looking_at_an_image=None,
         min_time_looking_at_an_image=None)
     yield Trial(
         trial_name='Trial 2',
         prompt=PROMPT,
+        time_looking_at_images=20 * SECOND,
+        time_after_looking_at_an_image=None,
+        min_time_looking_at_an_image=None)
+    yield Trial(
+        trial_name='Trial 3',
+        prompt=PROMPT,
         time_looking_at_images=None,
-        time_after_looking_at_an_image=2 * SECOND,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Trial(
+        trial_name='Trial 4',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Trial(
+        trial_name='Trial 5',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Trial(
+        trial_name='Trial 6',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Trial(
+        trial_name='Trial 7',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Trial(
+        trial_name='Trial 8',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Trial(
+        trial_name='Trial 9',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
         min_time_looking_at_an_image=SECOND)
 
 def main(stdscr_):
@@ -233,10 +276,13 @@ def main(stdscr_):
 
                 if res in {'success', 'failed'}:
                     if res == 'success':
-                        name = "{}.csv".format(trial.trial_name)
+                        name = "{}_{}.csv".format(subject_name,
+                                                  trial.trial_name)
                     else:
-                        name = '{}_failed_{}.csv'.format(
-                            trial.trial_name, datetime.datetime.now())
+                        name = '{}_{}_failed_{}.csv'.format(
+                            subject_name,
+                            trial.trial_name,
+                            datetime.datetime.now())
                     with open(name, "w") as f:
                         writer = csv.writer(f)
                         writer.writerows(trial.log)
@@ -246,4 +292,5 @@ def main(stdscr_):
 
 
 if __name__ == '__main__':
+    subject_name = input('Subject Name: ')
     curses.wrapper(main)
