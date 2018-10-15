@@ -87,7 +87,7 @@ class Trial:
                      'total away time', 'total left time', 'total right time']]
         self.append_log(self.focus, self.last_change)
 
-    def show_prompt(self, stdscr):
+    def show_prompt(self, stdscr, msg=''):
         stdscr.clear()
         height, width = stdscr.getmaxyx()
         stdscr.addstr(height // 2 - 3, 0, self.trial_name)
@@ -95,6 +95,7 @@ class Trial:
         stdscr.addstr(height // 2 - 0, 0, '(press SPACE to continue)')
         for i,line in enumerate(self.prompt.split('\n')):
             stdscr.addstr(height // 2 + 2 + i, 0, line)
+        stdscr.addstr(height // 2 + 4 + len(self.prompt.split('\n')), 0, msg)
         stdscr.refresh()
     
     def display(self, stdscr):
@@ -166,9 +167,7 @@ def receive_keys(callback):
             callback('continue')
 
 def get_trials():
-    yield Trial(
-        trial_name='Trial 1',
-        prompt=textwrap.dedent('''\
+    PROMPT = textwrap.dedent('''\
         A child will be presented with two images
 
         Press the LEFT ARROW KEY when the child looks at the LEFT IMAGE
@@ -176,10 +175,20 @@ def get_trials():
         Press the RIGHT ARROW KEY when the child looks at the RIGHT IMAGE
 
         Press the UP ARROW KEY when the child looks AWAY from both images.\
-        '''),
+        ''')
+
+    yield Trial(
+        trial_name='Trial 1',
+        prompt=PROMPT,
         time_looking_at_images=2 * SECOND,
         time_after_looking_at_an_image=None,
         min_time_looking_at_an_image=None)
+    yield Trial(
+        trial_name='Trial 2',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=2 * SECOND,
+        min_time_looking_at_an_image=SECOND)
 
 def main(stdscr_):
     global stdscr, exit_flag, wait_for_continue
@@ -199,35 +208,41 @@ def main(stdscr_):
     thread.start()
 
     for trial in get_trials():
-        global wait_for_continue
+        res = None
+        while res is None or res == 'failed':
+            global wait_for_continue
 
-        wait_for_continue = True
-        trial.show_prompt(stdscr)
-        while wait_for_continue:
-            if exit_flag:
-                exit()
+            wait_for_continue = True
+            if res == 'failed':
+                trial.show_prompt(stdscr,
+                        msg='THE PREVIOUS TRIAL FAILED. TRYING AGAIN.')
+            else:
+                trial.show_prompt(stdscr)
+            while wait_for_continue:
+                if exit_flag:
+                    exit()
 
-        trial.start()
-        current_trial = trial
-        while True:
-            if exit_flag:
-                exit()
+            trial.start()
+            current_trial = trial
+            while True:
+                if exit_flag:
+                    exit()
 
-            res = trial.update()
-            trial.display(stdscr_)
+                res = trial.update()
+                trial.display(stdscr_)
 
-            if res in {'success', 'failed'}:
-                if res == 'success':
-                    name = "{}.csv".format(trial.trial_name)
-                else:
-                    name = '{}_failed_{}.csv'.format(
-                        trial.trial_name, datetime.now())
-                with open(name, "w") as f:
-                    writer = csv.writer(f)
-                    writer.writerows(trial.log)
-                break
+                if res in {'success', 'failed'}:
+                    if res == 'success':
+                        name = "{}.csv".format(trial.trial_name)
+                    else:
+                        name = '{}_failed_{}.csv'.format(
+                            trial.trial_name, datetime.datetime.now())
+                    with open(name, "w") as f:
+                        writer = csv.writer(f)
+                        writer.writerows(trial.log)
+                    break
 
-            time.sleep(0.05)
+                time.sleep(0.05)
 
 
 if __name__ == '__main__':
