@@ -46,9 +46,9 @@ def format(delta):
     return '{}.{}'.format(delta.seconds, delta.microseconds)
 
 
-class Trial:
+class Run:
     def __init__(self,
-                 trial_name,
+                 run_name,
                  prompt,
                  time_looking_at_images=None,
                  time_after_looking_at_an_image=None,
@@ -56,9 +56,9 @@ class Trial:
 
         if time_looking_at_images is None and \
            time_after_looking_at_an_image is None:
-            raise ValueError('Trial "{}" will never end'.format(trial_name))
+            raise ValueError('Run "{}" will never end'.format(run_name))
 
-        self.trial_name = trial_name
+        self.run_name = run_name
         self.prompt = prompt
         self.time_looking_at_images = time_looking_at_images
         self.time_after_looking_at_an_image = time_after_looking_at_an_image
@@ -91,8 +91,8 @@ class Trial:
     def show_prompt(self, stdscr, msg=''):
         stdscr.clear()
         height, width = stdscr.getmaxyx()
-        stdscr.addstr(height // 2 - 3, 0, self.trial_name)
-        stdscr.addstr(height // 2 - 2, 0, '=' * len(self.trial_name))
+        stdscr.addstr(height // 2 - 3, 0, self.run_name)
+        stdscr.addstr(height // 2 - 2, 0, '=' * len(self.run_name))
         stdscr.addstr(height // 2 - 0, 0, '(press SPACE to continue)')
         for i,line in enumerate(self.prompt.split('\n')):
             stdscr.addstr(height // 2 + 2 + i, 0, line)
@@ -167,7 +167,31 @@ def receive_keys(callback):
         elif k == ord(' '):
             callback('continue')
 
-def get_trials():
+def get_runs():
+    '''In this function a list of 'runs' is created. Each run may either be
+    a Trial or a Test Run. Each run is created like this:
+
+    yield Run(
+        run_name= ,
+        prompt= ,
+        time_looking_at_images=TIME_LOOKING_AT_IMAGES * SECOND,
+        time_after_looking_at_an_image=TIME_AFTER_LOOKING_AT_AN_IMAGE * SECOND,
+        min_time_looking_at_an_image=MIN_TIME_LOOKING_AT_AN_IMAGE * SECOND)
+
+    Where the variables are such:
+
+    PHASE_NAME: The name of the run, shown to user before the run starts
+        and in filename
+    PROMPT: what the user should be shown before the run starts
+    TIME_LOOKING_AT_IMAGES: the maximum time the child should look at the left
+        image and right image (excluding time looking away)
+    TIME_AFTER_LOOKING_AT_AN_IMAGE: the maximum time the run can run after
+        the child has looked at an image
+    MIN_TIME_LOOKING_AT_AN_IMAGE: the minimum time the child must have spent
+        looking at images (sum of left and right) by the end of the run, else
+        the run is failed
+
+    '''
     PROMPT = textwrap.dedent('''\
         A child will be presented with two images
 
@@ -178,56 +202,38 @@ def get_trials():
         Press the UP ARROW KEY when the child looks AWAY from both images.\
         ''')
 
-    yield Trial(
-        trial_name='Trial 1',
+    yield Run(
+        run_name='Familiarization 1',
         prompt=PROMPT,
         time_looking_at_images=20 * SECOND,
         time_after_looking_at_an_image=None,
         min_time_looking_at_an_image=None)
-    yield Trial(
-        trial_name='Trial 2',
+    yield Run(
+        run_name='Test 1a',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Run(
+        run_name='Test 1b',
+        prompt=PROMPT,
+        time_looking_at_images=None,
+        time_after_looking_at_an_image=20 * SECOND,
+        min_time_looking_at_an_image=SECOND)
+    yield Run(
+        run_name='Familiarization 2',
         prompt=PROMPT,
         time_looking_at_images=20 * SECOND,
         time_after_looking_at_an_image=None,
         min_time_looking_at_an_image=None)
-    yield Trial(
-        trial_name='Trial 3',
+    yield Run(
+        run_name='Test 2a',
         prompt=PROMPT,
         time_looking_at_images=None,
         time_after_looking_at_an_image=20 * SECOND,
         min_time_looking_at_an_image=SECOND)
-    yield Trial(
-        trial_name='Trial 4',
-        prompt=PROMPT,
-        time_looking_at_images=None,
-        time_after_looking_at_an_image=20 * SECOND,
-        min_time_looking_at_an_image=SECOND)
-    yield Trial(
-        trial_name='Trial 5',
-        prompt=PROMPT,
-        time_looking_at_images=None,
-        time_after_looking_at_an_image=20 * SECOND,
-        min_time_looking_at_an_image=SECOND)
-    yield Trial(
-        trial_name='Trial 6',
-        prompt=PROMPT,
-        time_looking_at_images=None,
-        time_after_looking_at_an_image=20 * SECOND,
-        min_time_looking_at_an_image=SECOND)
-    yield Trial(
-        trial_name='Trial 7',
-        prompt=PROMPT,
-        time_looking_at_images=None,
-        time_after_looking_at_an_image=20 * SECOND,
-        min_time_looking_at_an_image=SECOND)
-    yield Trial(
-        trial_name='Trial 8',
-        prompt=PROMPT,
-        time_looking_at_images=None,
-        time_after_looking_at_an_image=20 * SECOND,
-        min_time_looking_at_an_image=SECOND)
-    yield Trial(
-        trial_name='Trial 9',
+    yield Run(
+        run_name='Test 2b',
         prompt=PROMPT,
         time_looking_at_images=None,
         time_after_looking_at_an_image=20 * SECOND,
@@ -238,11 +244,11 @@ def main(stdscr_):
     stdscr = stdscr_
     setup_curses()
 
-    current_trial = None
+    current_run = None
     def handle_key(key):
         global wait_for_continue
-        if current_trial is not None and key in {'away', 'right', 'left'}:
-            current_trial.update(new_focus=key)
+        if current_run is not None and key in {'away', 'right', 'left'}:
+            current_run.update(new_focus=key)
         elif key == 'continue':
             wait_for_continue = False
 
@@ -250,42 +256,42 @@ def main(stdscr_):
     thread.daemon = True
     thread.start()
 
-    for trial in get_trials():
+    for run in get_runs():
         res = None
         while res is None or res == 'failed':
             global wait_for_continue
 
             wait_for_continue = True
             if res == 'failed':
-                trial.show_prompt(stdscr,
-                        msg='THE PREVIOUS TRIAL FAILED. TRYING AGAIN.')
+                run.show_prompt(stdscr,
+                        msg='THE PREVIOUS RUN FAILED. TRYING AGAIN.')
             else:
-                trial.show_prompt(stdscr)
+                run.show_prompt(stdscr)
             while wait_for_continue:
                 if exit_flag:
                     exit()
 
-            trial.start()
-            current_trial = trial
+            run.start()
+            current_run = run
             while True:
                 if exit_flag:
                     exit()
 
-                res = trial.update()
-                trial.display(stdscr_)
+                res = run.update()
+                run.display(stdscr_)
 
                 if res in {'success', 'failed'}:
                     if res == 'success':
                         name = "{}_{}.csv".format(subject_name,
-                                                  trial.trial_name)
+                                                  run.run_name)
                     else:
                         name = '{}_{}_failed_{}.csv'.format(
                             subject_name,
-                            trial.trial_name,
+                            run.run_name,
                             datetime.datetime.now())
                     with open(name, "w") as f:
                         writer = csv.writer(f)
-                        writer.writerows(trial.log)
+                        writer.writerows(run.log)
                     break
 
                 time.sleep(0.05)
